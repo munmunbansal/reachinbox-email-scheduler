@@ -1,0 +1,85 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String            @id @default(uuid())
+  email            String            @unique
+  name             String
+  avatarUrl        String?
+  googleId         String            @unique
+  slackIntegration SlackIntegration?
+  senders          Sender[]
+  campaigns        Campaign[]
+  createdAt        DateTime          @default(now())
+}
+
+model SlackIntegration {
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  webhookUrl  String
+  channelName String?
+  teamName    String?
+  createdAt   DateTime @default(now())
+}
+
+model Sender {
+  id           String     @id @default(uuid())
+  userId       String
+  user         User       @relation(fields: [userId], references: [id])
+  name         String     @default("Ethereal Sender")
+  email        String
+  etherealUser String
+  etherealPass String
+  hourlyLimit  Int        @default(20)
+  campaigns    Campaign[]
+  emailJobs    EmailJob[]
+}
+
+model Campaign {
+  id             String     @id @default(uuid())
+  userId         String
+  user           User       @relation(fields: [userId], references: [id])
+  senderId       String
+  sender         Sender     @relation(fields: [senderId], references: [id])
+  subject        String
+  body           String
+  startTime      DateTime
+  delayBetweenMs Int        @default(2000)
+  hourlyLimit    Int        @default(20)
+  emailJobs      EmailJob[]
+  createdAt      DateTime   @default(now())
+}
+
+enum JobStatus {
+  SCHEDULED
+  PROCESSING
+  SENT
+  FAILED
+  RATE_LIMITED_DELAYED
+}
+
+model EmailJob {
+  id             String    @id @default(uuid())
+  userId         String?
+  campaignId     String
+  campaign       Campaign  @relation(fields: [campaignId], references: [id])
+  senderId       String
+  sender         Sender    @relation(fields: [senderId], references: [id])
+  recipientEmail String
+  subject        String
+  body           String
+  scheduledAt    DateTime
+  sentAt         DateTime?
+  status         JobStatus @default(SCHEDULED)
+  bullJobId      String?   @unique
+  previewUrl     String?
+  errorMessage   String?
+  createdAt      DateTime  @default(now())
+}
