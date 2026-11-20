@@ -1,6 +1,6 @@
 import { Queue, Worker, Job } from 'bullmq';
+import Redis from 'ioredis';
 import nodemailer from 'nodemailer';
-import { redisConnection } from '../config/redis';
 import { prisma } from '../config/db';
 import { getTransporter } from '../config/mailer';
 import { checkAndIncrementRateLimit } from '../services/rateLimiter';
@@ -13,9 +13,31 @@ export interface EmailJobPayload {
   emailJobId: string;
 }
 
-// 1. BullMQ Queue (persisted in Redis)
+function createBullConnection() {
+  const redisUrl = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
+  const isTls = redisUrl.startsWith('rediss://');
+
+  const conn = new Redis(redisUrl, {
+    maxRetriesPerRequest: null,
+    enableReadyCheck: false,
+    keepAlive: 10000,
+    family: 4,
+    ...(isTls ? { tls: { rejectUnauthorized: false } } : {}),
+    retryStrategy(times) {
+      return Math.min(times * 500, 3000);
+    },
+  });
+
+  conn.on('error', (err) => {
+    console.error('⚠️ BullMQ Redis warning:', err.message);
+  });
+
+  return conn;
+}
+
+// 1. BullMQ Queue (uses its own connection)
 export const emailQueue = new Queue<EmailJobPayload>(EMAIL_QUEUE_NAME, {
-  connection: redisConnection as any,
+  connection: createBullConnection() as any,
   defaultJobOptions: {
     attempts: 3,
     backoff: {
@@ -40,7 +62,7 @@ export async function scheduleEmailJob(emailJobId: string, scheduledAt: Date) {
   );
 }
 
-// 2. BullMQ Worker
+// 2. BullMQ Worker (uses a dedicated blocking connection)
 export function startEmailWorker() {
   const concurrency = Number(process.env.WORKER_CONCURRENCY) || 5;
 
@@ -179,7 +201,7 @@ export function startEmailWorker() {
       }
     },
     {
-      connection: redisConnection as any,
+      connection: createBullConnection() as any,
       concurrency,
     }
   );

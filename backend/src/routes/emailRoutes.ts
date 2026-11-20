@@ -67,15 +67,15 @@ router.post('/schedule', async (req: Request, res: Response) => {
     const effectiveHourlyLimit = Number(hourlyLimit) || sender.hourlyLimit || 20;
 
     // Create Campaign record
+    // Create Campaign record
     const campaign = await prisma.campaign.create({
       data: {
         userId,
         senderId: sender.id,
-        name: campaignName || subject,
         subject,
         body,
         startTime: baseStart,
-        delayBetweenSec: Math.round(gapMs / 1000),
+        delayBetweenMs: gapMs,
         hourlyLimit: effectiveHourlyLimit,
       },
     });

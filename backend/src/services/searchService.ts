@@ -76,13 +76,13 @@ export async function searchEmails(
   return await prisma.emailJob.findMany({
     where: {
       userId,
-      ...(status && status !== 'ALL' ? { status } : {}),
+      ...(status && status !== 'ALL' ? { status: status as any } : {}),
       ...(query.trim().length > 0
         ? {
             OR: [
-              { subject: { contains: query.trim(), mode: 'insensitive' } },
-              { recipientEmail: { contains: query.trim(), mode: 'insensitive' } },
-              { body: { contains: query.trim(), mode: 'insensitive' } },
+              { subject: { contains: query.trim() } },
+              { recipientEmail: { contains: query.trim()} },
+              { body: { contains: query.trim() } },
             ],
           }
         : {}),

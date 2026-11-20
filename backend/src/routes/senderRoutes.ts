@@ -24,7 +24,7 @@ router.get('/', async (req: Request, res: Response) => {
 
   const senders = await prisma.sender.findMany({
     where: { userId },
-    orderBy: { createdAt: 'asc' },
+    orderBy: { id: 'desc' },
   });
 
   res.json(senders);

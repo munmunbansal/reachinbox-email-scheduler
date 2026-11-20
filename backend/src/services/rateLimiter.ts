@@ -1,4 +1,4 @@
-import { redis } from '../config/redis';
+import { redisConnection as redis} from '../config/redis';
 
 /**
  * Checks if a sender can send an email in the current hour window.
